@@ -2,7 +2,7 @@
 
 import './popup.css';
 
-(function () {
+(function() {
   // We will make use of Storage API to get and store `count` value
   // More information on Storage API can we found at
   // https://developer.chrome.com/extensions/storage
@@ -48,74 +48,90 @@ import './popup.css';
     },
   };
 
-  function setupCounter(initialValue = 0) {
-    document.getElementById('counter').innerHTML = initialValue;
+  const articlesContainer = document.getElementById('article-container');
+  const saveButton = document.getElementById('saveBtn');
 
-    document.getElementById('incrementBtn').addEventListener('click', () => {
-      updateCounter({
-        type: 'INCREMENT',
-      });
-    });
+  // add entries to article container of class article-entry
+  const addArticle = () => {
+    alert('add article');
+    const articleEntry = document.createElement('div');
+    articleEntry.className = 'article-entry';
+    articleEntry.innerHTML = `
+    youtube.com
+    `;
+    articlesContainer.appendChild(articleEntry);
+  };
 
-    document.getElementById('decrementBtn').addEventListener('click', () => {
-      updateCounter({
-        type: 'DECREMENT',
-      });
-    });
-  }
+  saveButton.addEventListener('click', addArticle);
 
-  function updateCounter({ type }) {
-    counterStorage.get((count) => {
-      let newCount;
+  // function setupCounter(initialValue = 0) {
+  //   document.getElementById('counter').innerHTML = initialValue;
 
-      if (type === 'INCREMENT') {
-        newCount = count + 1;
-      } else if (type === 'DECREMENT') {
-        newCount = count - 1;
-      } else {
-        newCount = count;
-      }
+  //   document.getElementById('incrementBtn').addEventListener('click', () => {
+  //     updateCounter({
+  //       type: 'INCREMENT',
+  //     });
+  //   });
 
-      counterStorage.set(newCount, () => {
-        document.getElementById('counter').innerHTML = newCount;
+  //   document.getElementById('decrementBtn').addEventListener('click', () => {
+  //     updateCounter({
+  //       type: 'DECREMENT',
+  //     });
+  //   });
+  // }
 
-        // Communicate with content script of
-        // active tab by sending a message
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const tab = tabs[0];
+  // function updateCounter({ type }) {
+  //   counterStorage.get((count) => {
+  //     let newCount;
 
-          chrome.tabs.sendMessage(
-            tab.id,
-            {
-              type: 'COUNT',
-              payload: {
-                count: newCount,
-              },
-            },
-            (response) => {
-              console.log('Current count value passed to contentScript file');
-            }
-          );
-        });
-      });
-    });
-  }
+  //     if (type === 'INCREMENT') {
+  //       newCount = count + 1;
+  //     } else if (type === 'DECREMENT') {
+  //       newCount = count - 1;
+  //     } else {
+  //       newCount = count;
+  //     }
 
-  function restoreCounter() {
-    // Restore count value
-    counterStorage.get((count) => {
-      if (typeof count === 'undefined') {
-        // Set counter value as 0
-        counterStorage.set(0, () => {
-          setupCounter(0);
-        });
-      } else {
-        setupCounter(count);
-      }
-    });
-  }
+  //     counterStorage.set(newCount, () => {
+  //       document.getElementById('counter').innerHTML = newCount;
 
-  document.addEventListener('DOMContentLoaded', restoreCounter);
+  //       // Communicate with content script of
+  //       // active tab by sending a message
+  //       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  //         const tab = tabs[0];
+
+  //         chrome.tabs.sendMessage(
+  //           tab.id,
+  //           {
+  //             type: 'COUNT',
+  //             payload: {
+  //               count: newCount,
+  //             },
+  //           },
+  //           (response) => {
+  //             console.log('Current count value passed to contentScript file');
+  //           }
+  //         );
+  //       });
+  //     });
+  //   });
+  // }
+
+  // function restoreCounter() {
+  //   // Restore count value
+  //   counterStorage.get((count) => {
+  //     if (typeof count === 'undefined') {
+  //       // Set counter value as 0
+  //       counterStorage.set(0, () => {
+  //         setupCounter(0);
+  //       });
+  //     } else {
+  //       setupCounter(count);
+  //     }
+  //   });
+  // }
+
+  // document.addEventListener('DOMContentLoaded', restoreCounter);
 
   // Communicate with background file by sending a message
   chrome.runtime.sendMessage(

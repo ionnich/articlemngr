@@ -1,43 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>My Chrome Extension</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <div class="app">
-      <p class="counter-label">Article Manager</p>
-      <div class="button-container">
-        <button id="saveBtn" class="button">Save<button>
-        <button id="exportBtn" class="button">Export<button>
-        <button id="clearBtn" class="button">Clear<button>
-      </div>
 
-      <hr class="divider" />
-      <!-- input text field for user's name -->
-      <input class="name-textfield"type="text" id="name" placeholder="Enter your name" />
+<head>
+  <meta charset="UTF-8" />
+  <title>My Chrome Extension</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
 
-      <hr class="divider" />
-      <p class="title">Today's Articles</p>
-      <!-- List of article headlines named Today's Articles -->
-      <div id="article-container">
-        <ol class="article-list">
-          <li class="article-entry">https://bridesblush.com/trends/actors-regret-movie-scenes-de-ai/</li>
-          <li>Entry1</li>
-        </ol>
-      </div>
-
-
+<body>
+  <div class="app">
+    <p class="counter-label">Article Manager</p>
+    <div class="button-container">
+      <button id="saveBtn" class="button">Save</button>
+      <button id="exportBtn" class="button">Export</button>
+      <button id="clearBtn" class="button">Clear</button>
     </div>
 
-    <script src="popup.js"></script>
+    <hr class="divider" />
+    <!-- input text field for user's name -->
+    <input class="name-textfield" type="text" id="name" placeholder="Enter your name" />
 
-    <!--
+    <hr class="divider" />
+    <p class="title">Today's Articles</p>
+    <!-- List of article headlines named Today's Articles -->
+    <div id="article-container">
+      <ol id="article-list">
+      </ol>
+    </div>
+
+
+  </div>
+
+  <script src="popup.js"></script>
+
+  <!--
       This HTML file opens when you click on icon from the toolbar.
 
       To begin the development, run `npm run watch`.
       To create a production bundle, use `npm run build`.
     -->
-  </body>
+</body>
+
 </html>
