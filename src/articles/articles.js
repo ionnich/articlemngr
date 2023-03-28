@@ -60,14 +60,16 @@ export function exportEntries(EntryList) {
 
   XLSX.utils.sheet_add_aoa(ws, table, { origin: 'A1' });
 
+  const MAX_WIDTH = 50;
+
   // set width to max width
   ws['!cols'] = [
-    { wch: 100 },
-    { wch: 100 },
-    { wch: 100 },
-    { wch: 100 },
-    { wch: 100 },
-    { wch: 100 },
+    { wch: MAX_WIDTH },
+    { wch: MAX_WIDTH },
+    { wch: MAX_WIDTH },
+    { wch: MAX_WIDTH },
+    { wch: MAX_WIDTH },
+    { wch: MAX_WIDTH },
   ];
 
   // create excel file and download it
