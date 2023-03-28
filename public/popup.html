@@ -11,26 +11,32 @@
   <div class="app">
     <p class="counter-label">Article Manager</p>
     <div class="button-container">
-      <button id="saveBtn" class="button">Save</button>
-      <button id="exportBtn" class="button">Export</button>
+      <button id="exportBtn" class="button">
+        Export
+      </button>
       <button id="clearBtn" class="button">Clear</button>
     </div>
 
     <hr class="divider" />
     <!-- input text field for user's name -->
     <input class="name-textfield" type="text" id="name" placeholder="Enter your name" />
+    <div class="button-container">
+      <button id="saveBtn" class="button">Articles</button>
+      <button id="creativesBtn" class="button">Creatives</button>
+    </div>
 
     <hr class="divider" />
     <p class="title">Today's Articles</p>
+    <p class="title">Creatives Saved:
+      <span id="creativesCtr">0</id>
+    </p>
     <!-- List of article headlines named Today's Articles -->
     <div id="article-container">
       <ol id="article-list">
       </ol>
     </div>
 
-
   </div>
-
   <script src="popup.js"></script>
 
   <!--

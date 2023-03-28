@@ -1,217 +1,292 @@
 'use strict';
 
 import './popup.css';
+import * as data from './articles/domains.json';
+import { downloadExcel, exportEntries } from './articles/articles.js';
+import { parseCampaignNames, downloadToText } from './articles/campaigns.js';
 
-// import xlsx 
-import { writeFileXLSX } from "xlsx"
+(function () {
+  class Entry {
+    constructor(url, headline, campaign, creativeArr) {
+      this.url = url;
+      this.headline = headline;
+      this.campaign = campaign;
+      this.creatives = creativeArr;
+    }
+  }
 
-(function() {
-
-  const domains = ['bridesblush.com', 'thefashionball.com', 'thedaddest.com', 'sneakertoast.com', 'instantlymodern.com', 'fabcrunch.com', 'drivepedia.com', 'cleverclassic.com', 'ballercap.com', 'bigglobaltravel.com'];
-  // We will make use of Storage API to get and store `count` value
-  // More information on Storage API can we found at
-  // https://developer.chrome.com/extensions/storage
-
-  // To get storage access, we have to mention it in `permissions` property of manifest.json file
-  // More information on Permissions can we found at
-  // https://developer.chrome.com/extensions/declare_permissions
+  const domains = data.domains;
+  const adheart = data.adheart;
 
   const saveButton = document.getElementById('saveBtn');
   const exportButton = document.getElementById('exportBtn');
   const clearButton = document.getElementById('clearBtn');
+  const creativesButton = document.getElementById('creativesBtn');
+
   const nameTextBox = document.getElementById('name');
 
-  saveButton.addEventListener('click', saveArticles)
-  clearButton.addEventListener('click', clearArticles)
-  exportButton.addEventListener('click', exportArticles)
+  saveButton.addEventListener('click', saveArticles);
+  clearButton.addEventListener('click', clearArticles);
+  exportButton.addEventListener('click', exportExcel);
+  creativesButton.addEventListener('click', saveCreatives);
 
-
-  // export to excel in the format: articles | headlines | campaigns
-  function exportToExcel(articles, headlines, campaigns) {
-    const table = []
-    // create a table with the format: articles | headlines | campaigns
-    for (let i = 0; i < articles.length; i++) {
-      table.push([articles[i], headlines[i], campaigns[i]])
-    }
-    var XLSX = require('xlsx');
-
-    const ws = XLSX.utils.aoa_to_sheet(table);
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-
-    XLSX.utils.sheet_add_aoa(ws, table, { origin: "A1" });
-
-    // set width to max width
-    ws['!cols'] = [{ wch: 100 }, { wch: 100 }, { wch: 100 }]
-
-
-    // create excel file and download it
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
-
-    function s2ab(s) {
-      const buf = new ArrayBuffer(s.length);
-      const view = new Uint8Array(buf);
-      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
-      return buf;
-    }
-    const blob = new Blob([s2ab(wbout)], { type: "application/octet-stream" });
+  async function exportArticles() {
+    const exportvars = await chrome.storage.sync.get(['articles', 'headlines', 'campaigns']);
+    const blob = downloadExcel(exportvars.articles, exportvars.headlines, exportvars.campaigns);
     const link = document.createElement('a');
     link.href = window.URL.createObjectURL(blob);
-    link.download = "articles.xlsx";
+    link.download = 'articles.xlsx';
+    link.click();
+  }
+
+  async function exportExcel() {
+    const exportVars = await chrome.storage.sync.get([
+      'articles',
+      'headlines',
+      'campaigns',
+      'creatives',
+    ]);
+
+    const EntryList = bundleData(
+      exportVars.articles,
+      exportVars.headlines,
+      exportVars.campaigns,
+      exportVars.creatives
+    );
+    const entryquery = exportEntries(EntryList);
+
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(entryquery.download_object);
+    link.download = 'entries.xlsx';
     link.click();
 
-
-  }
-
-  // export articles to excel
-  function exportArticles() {
-    // get articles, headlines, campaigns from storage
-    chrome.storage.sync.get(['articles', 'headlines', 'campaigns'], function(result) {
-      let masterSheet = {
-        'articles': [],
-        'headlines': [],
-        'campaigns': []
-      }
-
-      if (result.articles) {
-        masterSheet.articles = result.articles;
-      }
-      if (result.headlines) {
-        masterSheet.headlines = result.headlines;
-      }
-      if (result.campaigns) {
-        masterSheet.campaigns = result.campaigns;
-      }
-
-      exportToExcel(masterSheet.articles, masterSheet.headlines, masterSheet.campaigns);
-
-    });
-  }
-
-  function parseCampaignNames(urls, name) {
-    let campaignsJS = []
-    for (const url of urls) {
-      let campaignName = extractCampaignName(url, name);
-      if (campaignName != null && campaignsJS.includes(campaignName) == false) {
-        campaignsJS.push(campaignName);
-      }
+    if (entryquery.unpushed_entries.length > 0) {
+      alert(
+        'There are ' +
+          entryquery.unpushed_entries.length +
+          ' entries that were not exported. Please make sure that each entry has three creatives.'
+      );
     }
-    return campaignsJS;
   }
 
-  function extractCampaignName(url, name) {
-    const date = new Date().toLocaleString('default', { month: 'short' }) + new Date().getDate().toString().padStart(2, '0');
-    const urlParts = url.split('/');
-    for (let i = urlParts.length - 1; i >= 0; i--) {
-      const part = urlParts[i];
-      if (part.includes('-') && !part.startsWith('http')) {
-        return `${part}-${name}-${date}`;
-      }
-    }
-    return null;
-  }
-
-
-  // renders all articles to the article-container
-  function render(articlesJS, name) {
-    // if name is set
+  function renderData(data, name) {
     const articleList = document.getElementById('article-list');
-    if (name != "" && name != null) {
-      nameTextBox.value = name;
-    }
+    nameTextBox.value = name;
+    const creativeCounter = document.getElementById('creativesCtr');
+    // const articleCount = 0;
 
-    articleList.innerHTML = ''
+    let creativeCount = 0;
+
+    articleList.innerHTML = '';
+    data.forEach((article, index) => {
+      creativeCount += article.creatives.length;
+      const table = document.createElement('table');
+      table.className = 'table-entry';
+
+      const row = table.insertRow(0);
+
+      const cell1 = row.insertCell(0);
+      const cell2 = row.insertCell(1);
+      const cell3 = row.insertCell(2);
+
+      cell1.innerHTML = index + 1;
+      cell1.style.align = 'left';
+      cell2.innerHTML =
+        '<a style="text-decoration:none"  href="' +
+        article.url +
+        '" target="_blank">' +
+        article.headline +
+        '</a>';
+      cell2.style.marginLeft = '10px';
+
+      cell3.innerHTML = article.creatives.length;
+      switch (article.creatives.length) {
+        case 0:
+          cell2.style.backgroundColor = 'red';
+          break;
+        case 1:
+        case 2:
+          cell2.style.backgroundColor = 'yellow';
+          break;
+        default:
+          cell2.style.backgroundColor = 'green';
+          break;
+      }
+
+      cell1.style.textAlign = 'left';
+      cell3.style.align = 'right';
+
+      articleList.appendChild(table);
+    });
+    creativeCounter.innerHTML = creativeCount;
+  }
+
+  function render(articlesJS, name) {
+    const articleList = document.getElementById('article-list');
+    nameTextBox.value = name;
+
+    articleList.innerHTML = '';
     for (const article in articlesJS) {
       const li = document.createElement('li');
       li.className = 'article-entry';
-      li.innerHTML = articlesJS[article];
+      // inner html must be in the format aritcle | counter
+      // just like:
+      // https://www.nytimes.com/2020/10/01/us/politics/trump-biden-debate.html | 1
+      li.innerHTML = `${article} | ${articlesJS[article]}`;
+      // li.innerHTML = articlesJS[article];
       articleList.appendChild(li);
     }
   }
 
-  function saveArticles() {
-    let name = nameTextBox.value;
-    if (name == null || name == "") {
-      alert("Please enter your name");
-      return;
+  function bundleData(urls, headlines, campaigns, creatives) {
+    const entryList = [];
+    let lastCreative = 0;
+    urls.forEach((url, index) => {
+      // each article has 3 creatives
+      // the next article wont have creatives until the previous article has 3 creatives
+      // so we need to keep track of the last creative index
+      // and increment it by 3 for the next article
+      const creativeArr = creatives.slice(lastCreative, lastCreative + 3);
+      lastCreative += 3;
+      const entry = new Entry(url, headlines[index], campaigns[index], creativeArr);
+      entryList.push(entry);
+    });
+
+    return entryList;
+  }
+
+  async function saveCreatives() {
+    let MAX_CREATIVES = 3;
+
+    const creativesQuery = await chrome.storage.sync.get(['creatives']);
+    const articlesQuery = await chrome.storage.sync.get(['articles']);
+
+    let creatives = creativesQuery.creatives ? creativesQuery.creatives : [];
+    let articles = articlesQuery.articles ? articlesQuery.articles : {};
+
+    if (articles != undefined) {
+      MAX_CREATIVES = articles.length * 3;
     }
 
-    // check if existing articles are in storage
-    chrome.storage.sync.get(['articles', 'headlines'], function(result) {
-      let articlesJS = []
-      let headlinesJS = []
-      if (result.articles != null) {
-        articlesJS = result.articles;
-      }
-      if (result.headlines != null) {
-        headlinesJS = result.headlines;
-      }
-      chrome.tabs.query({ currentWindow: true }, (tabs) => {
-        for (const tab of tabs) {
-          if (domains.some((domain) => tab.url.includes(domain))) {
-            if (articlesJS.includes(tab.url) == false) {
-              articlesJS.push(tab.url);
-              headlinesJS.push(tab.title);
-            }
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+      for (const tab of tabs) {
+        if (adheart.some((domain) => tab.url.includes(domain))) {
+          // add tab url to creatives
+          if (creatives.length < MAX_CREATIVES) {
+            creatives.push(tab.url);
           }
         }
-        // get campaign names from tab titles and save to storage
-        const campaignsJS = parseCampaignNames(articlesJS, name);
-        uploadCampaigns(campaignsJS);
-        uploadHeadlines(headlinesJS);
-        // save username to storage
-        uploadName(name);
-        // save articles to storage and render
-        uploadArticles(articlesJS);
-        render(articlesJS, name);
+      }
+
+      chrome.storage.sync.set({ creatives: creatives }, () => {
+        console.log('creatives saved');
       });
     });
   }
 
-  function uploadName(name) {
-    chrome.storage.sync.set({ name: name }, function() {
+  async function saveArticles() {
+    let name = nameTextBox.value;
+    if (name == null || name == '') {
+      alert('Please enter your name');
+      return;
     }
+
+    const articleQuery = await chrome.storage.sync.get(['articles']);
+    const headlineQuery = await chrome.storage.sync.get(['headlines']);
+
+    let articles = articleQuery.articles ? articleQuery.articles : [];
+    let headlines = headlineQuery.headlines ? headlineQuery.headlines : [];
+
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+      let WARNING_FLAG = false;
+      for (const tab of tabs) {
+        if (domains.some((domain) => tab.url.includes(domain))) {
+          if (!articles.includes(tab.url)) {
+            articles.push(tab.url);
+            headlines.push(tab.title);
+          } else if (!WARNING_FLAG) {
+            WARNING_FLAG = true;
+            alert('You have already saved this article');
+          }
+        }
+      }
+
+      const campaigns = parseCampaignNames(articles, name);
+
+      // create a text file containing all campaigns
+      const campaignsBlob = downloadToText(campaigns);
+
+      // download the blob
+      const link = document.createElement('a');
+      const url = window.URL.createObjectURL(campaignsBlob);
+      link.href = url;
+      link.download = 'campaigns.txt';
+      link.click();
+
+      chrome.storage.sync.set(
+        { articles: articles, headlines: headlines, campaigns: campaigns, name: name },
+        function () {
+          console.log('Articles saved');
+        }
+      );
+    });
+  }
+
+  function sync() {
+    chrome.storage.sync.get(
+      ['articles', 'headlines', 'campaigns', 'creatives', 'name'],
+      function (result) {
+        let headlines = [];
+        let urls = [];
+        let creatives = [];
+        let campaigns = [];
+        let name = '';
+        if (result.headlines != null) {
+          headlines = result.headlines;
+        }
+        if (result.campaigns != null) {
+          campaigns = result.campaigns;
+        }
+        if (result.name != null) {
+          name = result.name;
+        }
+        if (result.creatives != null) {
+          creatives = result.creatives;
+        }
+        if (result.articles != null) {
+          urls = result.articles;
+        }
+        const data = bundleData(urls, headlines, campaigns, creatives);
+        renderData(data, name);
+      }
     );
   }
 
-  function uploadHeadlines(headlines) {
-    chrome.storage.sync.set({ headlines: headlines }, function() {
+  // function chromeDownload() {
+  //   sync();
+  // }
+
+  // add event listener to storage for changes
+  chrome.storage.onChanged.addListener(function (changes, namespace) {
+    for (let key in changes) {
+      let storageChange = changes[key];
+      if (key == 'headlines' || key == 'articles' || key == 'creatives') {
+        // get new data
+        sync();
+      }
     }
-    );
-  }
-
-  function uploadArticles(articlesJS) {
-    chrome.storage.sync.set({ 'articles': articlesJS }, function() {
-    });
-  }
-
-  function uploadCampaigns(campaignsJS) {
-    chrome.storage.sync.set({ 'campaigns': campaignsJS }, function() {
-      console.log('Campaigns saved');
-    });
-  }
-  // download localstorage data to arrays
-  function chromeDownload() {
-    chrome.storage.sync.get(['articles', 'name'], function(result) {
-      let articlesJS = [];
-      let name = "";
-      if (result.articles != null) {
-        articlesJS = result.articles;
-      }
-      if (result.name != null) {
-        name = result.name;
-      }
-      render(articlesJS, name);
-    });
-  }
-
-  // download data before popup is opened
-  window.addEventListener('load', chromeDownload);
+  });
 
   // empty localstorage
   function clearArticles() {
-    chrome.storage.sync.clear();
-    render([], "");
+    chrome.storage.sync.set(
+      { creatives: [], articles: [], headlines: [], campaigns: [], name: '' },
+      function () {
+        nameTextBox.value = '';
+        console.log('Cleared articles');
+      }
+    );
   }
 
+  window.addEventListener('load', sync);
 })();
