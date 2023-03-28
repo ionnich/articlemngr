@@ -1,15 +1,16 @@
 # <img src="public/icons/icon_48.png" width="45" align="left"> Articlemngr
 
-My Chrome Extension
+Article Manager
 
 ## Features
 
-- Feature 1
-- Feature 2
+- Automatically track all saved pubplus articles
+- Export articles to excel
 
 ## Install
 
-[**Chrome** extension]() <!-- TODO: Add chrome extension link inside parenthesis -->
+- Download the release from github
+- Install it in developer mode
 
 ## Contribution
 
