@@ -55,6 +55,11 @@ export function exportEntries(EntryList) {
   var XLSX = require('xlsx');
 
   const ws = XLSX.utils.aoa_to_sheet(table);
+
+  // create hyperlinks for all entries in the workbook
+  for (let i = 1; i < table.length; i++) {
+    // create hyper links to be added to the worksheet
+  }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
 
@@ -64,9 +69,9 @@ export function exportEntries(EntryList) {
 
   // set width to max width
   ws['!cols'] = [
-    { wch: MAX_WIDTH },
-    { wch: MAX_WIDTH },
-    { wch: MAX_WIDTH },
+    { wch: MAX_WIDTH * 2 },
+    { wch: MAX_WIDTH * 2 },
+    { wch: MAX_WIDTH * 2 },
     { wch: MAX_WIDTH },
     { wch: MAX_WIDTH },
     { wch: MAX_WIDTH },
